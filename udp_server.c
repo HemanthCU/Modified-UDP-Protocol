@@ -32,7 +32,9 @@ int main(int argc, char **argv) {
   struct sockaddr_in clientaddr; /* client addr */
   struct hostent *hostp; /* client host info */
   char buf[BUFSIZE]; /* message buf */
+  char buf1[BUFSIZE]; /* message buf1 */
   char msgtype[MSGTYPESIZE + 1];
+  char msgtype1[MSGTYPESIZE + 1];
   char *hostaddrp; /* dotted decimal host addr string */
   int optval; /* flag value for setsockopt */
   int n; /* message byte size */
@@ -105,9 +107,19 @@ int main(int argc, char **argv) {
     printf("server received datagram from %s (%s)\n", 
 	   hostp->h_name, hostaddrp);
     printf("server received %d/%d bytes: %s\n", strlen(buf), n, buf);
-    
+
     bzero(msgtype, MSGTYPESIZE + 1);
-    memcpy(msgtype, &buf, MSGTYPESIZE);
+    memcpy(msgtype, buf, MSGTYPESIZE);
+
+    if (strcmp(msgtype, "ack") != 0) {
+      bzero(buf1, BUFSIZE);
+      strcpy(msgtype1, "ack");
+      memcpy(buf1, msgtype1, MSGTYPESIZE);
+      n = sendto(sockfd, buf1, strlen(buf1), 0, 
+        (struct sockaddr *) &clientaddr, clientlen);
+      if (n < 0) 
+        error("ERROR in sendto");
+    }
 
     /*
      * Compare which action is being performed based on 3 char message
@@ -115,9 +127,14 @@ int main(int argc, char **argv) {
     if (strcmp(msgtype, "get") == 0) {
       // Initial get message. This will initiate a send from the server back to the client.
 
+    } else if (strcmp(msgtype, "ack") == 0) {
+      // Acknowledgement message from client when receiving file after get command.
+      
     } else if (strcmp(msgtype, "put") == 0) {
       // Initial put message. Server will send acknowledgement, create file with the filename
       // in the file system and expect ftr messages from the client.
+
+
 
     } else if (strcmp(msgtype, "ftr") == 0) {
       // File transfer message. This is part of the file being sent and will be combined with
@@ -139,9 +156,11 @@ int main(int argc, char **argv) {
     /* 
      * sendto: echo the input back to the client 
      */
+    /*
     n = sendto(sockfd, buf, strlen(buf), 0, 
-	       (struct sockaddr *) &clientaddr, clientlen);
+         (struct sockaddr *) &clientaddr, clientlen);
     if (n < 0) 
       error("ERROR in sendto");
+      */
   }
 }
