@@ -14,6 +14,7 @@
 #include <arpa/inet.h>
 
 #define BUFSIZE 1024
+#define MSGTYPESIZE 3
 
 /*
  * error - wrapper for perror
@@ -31,6 +32,7 @@ int main(int argc, char **argv) {
   struct sockaddr_in clientaddr; /* client addr */
   struct hostent *hostp; /* client host info */
   char buf[BUFSIZE]; /* message buf */
+  char msgtype[MSGTYPESIZE + 1];
   char *hostaddrp; /* dotted decimal host addr string */
   int optval; /* flag value for setsockopt */
   int n; /* message byte size */
@@ -104,6 +106,36 @@ int main(int argc, char **argv) {
 	   hostp->h_name, hostaddrp);
     printf("server received %d/%d bytes: %s\n", strlen(buf), n, buf);
     
+    bzero(msgtype, MSGTYPESIZE + 1);
+    memcpy(msgtype, &buf, MSGTYPESIZE);
+
+    /*
+     * Compare which action is being performed based on 3 char message
+     */
+    if (strcmp(msgtype, "get") == 0) {
+      // Initial get message. This will initiate a send from the server back to the client.
+
+    } else if (strcmp(msgtype, "put") == 0) {
+      // Initial put message. Server will send acknowledgement, create file with the filename
+      // in the file system and expect ftr messages from the client.
+
+    } else if (strcmp(msgtype, "ftr") == 0) {
+      // File transfer message. This is part of the file being sent and will be combined with
+      // the other parts previously received to form the file.
+      
+    } else if (strcmp(msgtype, "del") == 0) {
+      // Initial delete message. Server will delete the requested file and acknowledge.
+      
+    } else if (strcmp(msgtype, "lis") == 0) {
+      // Initial list message. Server will respond with the files in the server's system.
+      
+    } else if (strcmp(msgtype, "exi") == 0) {
+      // Exit command. Will exit while loop and close server.
+      
+    } else {
+      error("ERROR message sent");
+    }
+
     /* 
      * sendto: echo the input back to the client 
      */
