@@ -118,17 +118,57 @@ int main(int argc, char **argv) {
       n = sendto(sockfd, buf1, strlen(buf1), 0, 
         (struct sockaddr *) &clientaddr, clientlen);
       if (n < 0) 
-        error("ERROR in sendto");
+        error("ERROR in ack sendto");
     }
 
     /*
      * Compare which action is being performed based on 3 char message
      */
     if (strcmp(msgtype, "get") == 0) {
-      // Initial get message. This will initiate a send from the server back to the client.
-
+      // Initial get message. This will initiate a send from the server back to the client. If this is also
+      // the ending of the file, send fte message instead.
+      
+      // TODO: Find the mentioned file
+      
+      if (1/* End of file */) {
+        bzero(buf1, BUFSIZE);
+        strcpy(msgtype1, "fte");
+        memcpy(buf1, msgtype1, MSGTYPESIZE);
+        n = sendto(sockfd, buf1, strlen(buf1), 0, 
+          (struct sockaddr *) &clientaddr, clientlen);
+        if (n < 0) 
+          error("ERROR in fte sendto");
+      } else {
+        bzero(buf1, BUFSIZE);
+        strcpy(msgtype1, "ftr");
+        memcpy(buf1, msgtype1, MSGTYPESIZE);
+        n = sendto(sockfd, buf1, strlen(buf1), 0, 
+          (struct sockaddr *) &clientaddr, clientlen);
+        if (n < 0) 
+          error("ERROR in ftr sendto");
+      }
     } else if (strcmp(msgtype, "ack") == 0) {
       // Acknowledgement message from client when receiving file after get command.
+      
+      // TODO: Get next part of file and send. Check for file ending and if it is ending, send fte message instead.
+      
+      if (1/* End of file */) {
+        bzero(buf1, BUFSIZE);
+        strcpy(msgtype1, "fte");
+        memcpy(buf1, msgtype1, MSGTYPESIZE);
+        n = sendto(sockfd, buf1, strlen(buf1), 0, 
+          (struct sockaddr *) &clientaddr, clientlen);
+        if (n < 0) 
+          error("ERROR in fte sendto");
+      } else {
+        bzero(buf1, BUFSIZE);
+        strcpy(msgtype1, "ftr");
+        memcpy(buf1, msgtype1, MSGTYPESIZE);
+        n = sendto(sockfd, buf1, strlen(buf1), 0, 
+          (struct sockaddr *) &clientaddr, clientlen);
+        if (n < 0) 
+          error("ERROR in ftr sendto");
+      }
       
     } else if (strcmp(msgtype, "put") == 0) {
       // Initial put message. Server will send acknowledgement, create file with the filename
@@ -139,6 +179,10 @@ int main(int argc, char **argv) {
     } else if (strcmp(msgtype, "ftr") == 0) {
       // File transfer message. This is part of the file being sent and will be combined with
       // the other parts previously received to form the file.
+      
+    } else if (strcmp(msgtype, "fte") == 0) {
+      // File transfer end message. This is the last part of the file being sent and will be
+      // combined with the other parts previously received to form the completed file.
       
     } else if (strcmp(msgtype, "del") == 0) {
       // Initial delete message. Server will delete the requested file and acknowledge.
