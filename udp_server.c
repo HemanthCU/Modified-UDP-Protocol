@@ -15,6 +15,8 @@
 
 #define BUFSIZE 1024
 #define MSGTYPESIZE 3
+#define SEQNOSIZE 5
+#define HEADER 8
 
 /*
  * error - wrapper for perror
@@ -35,9 +37,13 @@ int main(int argc, char **argv) {
   char buf1[BUFSIZE]; /* message buf1 */
   char msgtype[MSGTYPESIZE + 1];
   char msgtype1[MSGTYPESIZE + 1];
+  char SN[SEQNOSIZE + 1];
+  char SN1[SEQNOSIZE + 1];
   char *hostaddrp; /* dotted decimal host addr string */
   int optval; /* flag value for setsockopt */
   int n; /* message byte size */
+  int SeqNo; /* Sequence number of the received packet */
+  int SeqNo1 = 10000; /* Sequence number of the packet */
 
   /* 
    * check command line arguments 
@@ -110,11 +116,20 @@ int main(int argc, char **argv) {
 
     bzero(msgtype, MSGTYPESIZE + 1);
     memcpy(msgtype, buf, MSGTYPESIZE);
+    
+    bzero(SN, SEQNOSIZE + 1);
+    memcpy(SN, buf + 3, SEQNOSIZE);
+    SeqNo = atoi(SN);
 
+    /* 
+     * Structure of message: Command(3B) SeqNo(5B) Message(1016B)
+     */
+    
     if (strcmp(msgtype, "ack") != 0) {
       bzero(buf1, BUFSIZE);
       strcpy(msgtype1, "ack");
       memcpy(buf1, msgtype1, MSGTYPESIZE);
+      memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
       n = sendto(sockfd, buf1, strlen(buf1), 0, 
         (struct sockaddr *) &clientaddr, clientlen);
       if (n < 0) 
@@ -130,22 +145,28 @@ int main(int argc, char **argv) {
       
       // TODO: Find the mentioned file
       
-      if (1/* End of file */) {
+      if (1/* End of file in the case that complete file fits in 1 packet */) {
         bzero(buf1, BUFSIZE);
         strcpy(msgtype1, "fte");
         memcpy(buf1, msgtype1, MSGTYPESIZE);
+        sprintf(SN1, "%d", SeqNo1);
+        memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
         if (n < 0) 
           error("ERROR in fte sendto");
+        SeqNo1++;
       } else {
         bzero(buf1, BUFSIZE);
         strcpy(msgtype1, "ftr");
         memcpy(buf1, msgtype1, MSGTYPESIZE);
+        sprintf(SN1, "%d", SeqNo1);
+        memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
         if (n < 0) 
           error("ERROR in ftr sendto");
+        SeqNo1++;
       }
     } else if (strcmp(msgtype, "ack") == 0) {
       // Acknowledgement message from client when receiving file after get command.
@@ -156,18 +177,24 @@ int main(int argc, char **argv) {
         bzero(buf1, BUFSIZE);
         strcpy(msgtype1, "fte");
         memcpy(buf1, msgtype1, MSGTYPESIZE);
+        sprintf(SN1, "%d", SeqNo1);
+        memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
         if (n < 0) 
           error("ERROR in fte sendto");
+        SeqNo1++;
       } else {
         bzero(buf1, BUFSIZE);
         strcpy(msgtype1, "ftr");
         memcpy(buf1, msgtype1, MSGTYPESIZE);
+        sprintf(SN1, "%d", SeqNo1);
+        memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
         if (n < 0) 
           error("ERROR in ftr sendto");
+        SeqNo1++;
       }
       
     } else if (strcmp(msgtype, "put") == 0) {
