@@ -17,6 +17,7 @@
 #define MSGTYPESIZE 3
 #define SEQNOSIZE 5
 #define HEADER 8
+#define MSGSIZE 1016
 
 /*
  * error - wrapper for perror
@@ -39,11 +40,16 @@ int main(int argc, char **argv) {
   char msgtype1[MSGTYPESIZE + 1];
   char SN[SEQNOSIZE + 1];
   char SN1[SEQNOSIZE + 1];
+  char msg[MSGSIZE + 1];
+  char filename[1000];
   char *hostaddrp; /* dotted decimal host addr string */
   int optval; /* flag value for setsockopt */
   int n; /* message byte size */
   int SeqNo; /* Sequence number of the received packet */
   int SeqNo1 = 10000; /* Sequence number of the packet */
+  int msgsz;
+  FILE *fp;
+  
 
   /* 
    * check command line arguments 
@@ -142,26 +148,33 @@ int main(int argc, char **argv) {
     if (strcmp(msgtype, "get") == 0) {
       // Initial get message. This will initiate a send from the server back to the client. If this is also
       // the ending of the file, send fte message instead.
+      bzero(filename, 1000);
+      bzero(msg, MSGSIZE + 1);
+      memcpy(filename, buf + HEADER, 1000);
+      fp = fopen(filename, "w+");
+      fseek(fp, 0, SEEK_SET);
+      msgsz = (int) fread(msg, MSGSIZE, 1, fp);
       
-      // TODO: Find the mentioned file
-      
-      if (1/* End of file in the case that complete file fits in 1 packet */) {
+      if (msgsz < MSGSIZE/* End of file in the case that complete file fits in 1 packet */) {
         bzero(buf1, BUFSIZE);
         strcpy(msgtype1, "fte");
         memcpy(buf1, msgtype1, MSGTYPESIZE);
         sprintf(SN1, "%d", SeqNo1);
         memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
+        memcpy(buf1 + HEADER, msg, MSGSIZE);
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
         if (n < 0) 
           error("ERROR in fte sendto");
         SeqNo1++;
+        fclose(fp);
       } else {
         bzero(buf1, BUFSIZE);
         strcpy(msgtype1, "ftr");
         memcpy(buf1, msgtype1, MSGTYPESIZE);
         sprintf(SN1, "%d", SeqNo1);
         memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
+        memcpy(buf1 + HEADER, msg, MSGSIZE);
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
         if (n < 0) 
@@ -171,25 +184,29 @@ int main(int argc, char **argv) {
     } else if (strcmp(msgtype, "ack") == 0) {
       // Acknowledgement message from client when receiving file after get command.
       
-      // TODO: Get next part of file and send. Check for file ending and if it is ending, send fte message instead.
+      fseek(fp, MSGSIZE, SEEK_CUR);
+      msgsz = (int) fread(msg, MSGSIZE, 1, fp);
       
-      if (1/* End of file */) {
+      if (msgsz < MSGSIZE/* End of file */) {
         bzero(buf1, BUFSIZE);
         strcpy(msgtype1, "fte");
         memcpy(buf1, msgtype1, MSGTYPESIZE);
         sprintf(SN1, "%d", SeqNo1);
         memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
+        memcpy(buf1 + HEADER, msg, MSGSIZE);
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
         if (n < 0) 
           error("ERROR in fte sendto");
         SeqNo1++;
+        fclose(fp);
       } else {
         bzero(buf1, BUFSIZE);
         strcpy(msgtype1, "ftr");
         memcpy(buf1, msgtype1, MSGTYPESIZE);
         sprintf(SN1, "%d", SeqNo1);
         memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
+        memcpy(buf1 + HEADER, msg, MSGSIZE);
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
         if (n < 0) 
