@@ -40,6 +40,7 @@ int main(int argc, char **argv) {
   char msg[MSGSIZE + 1];
   char filename[1000];
   int SeqNo; /* Sequence number of the received packet */
+  int CSN = -1; /* Cumulative sequence number to track which packets arrived */
   int SeqNo1 = 20000; /* Sequence number of the packet */
   int msgsz;
   int comp;
@@ -114,9 +115,76 @@ int main(int argc, char **argv) {
             error("ERROR in sendto");
         }
       } else if (strcmp(msgtype, "ftr") == 0) {
-
+        if (CSN < 0 || SeqNo == CSN + 1) {
+          CSN = SeqNo;
+          
+          bzero(buf1, BUFSIZE);
+          strcpy(msgtype1, "ack");
+          memcpy(buf1, msgtype1, MSGTYPESIZE);
+          memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
+          n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+          if (n < 0) 
+            error("ERROR in ack sendto");
+          
+          bzero(msg, MSGSIZE + 1);
+          memcpy(msg, buf1 + HEADER, MSGSIZE);
+          
+          // TODO: Write to file here
+        } else if (SeqNo > CSN + 1) {
+          bzero(buf1, BUFSIZE);
+          strcpy(msgtype1, "ack");
+          memcpy(buf1, msgtype1, MSGTYPESIZE);
+          sprintf(SN, "%d", CSN);
+          memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
+          n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+          if (n < 0) 
+            error("ERROR in ack sendto");
+        } else {
+          bzero(buf1, BUFSIZE);
+          strcpy(msgtype1, "ack");
+          memcpy(buf1, msgtype1, MSGTYPESIZE);
+          memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
+          n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+          if (n < 0) 
+            error("ERROR in ack sendto");
+        }
       } else if (strcmp(msgtype, "fte") == 0) {
+        if (CSN < 0 || SeqNo == CSN + 1) {
+          CSN = SeqNo;
+          
+          bzero(buf1, BUFSIZE);
+          strcpy(msgtype1, "ack");
+          memcpy(buf1, msgtype1, MSGTYPESIZE);
+          memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
+          n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+          if (n < 0) 
+            error("ERROR in ack sendto");
+          
+          bzero(msg, MSGSIZE + 1);
+          memcpy(msg, buf1 + HEADER, MSGSIZE);
+          
+          // TODO: Write to file here
+        } else if (SeqNo > CSN + 1) {
+          bzero(buf1, BUFSIZE);
+          strcpy(msgtype1, "ack");
+          memcpy(buf1, msgtype1, MSGTYPESIZE);
+          sprintf(SN, "%d", CSN);
+          memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
+          n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+          if (n < 0) 
+            error("ERROR in ack sendto");
+        } else {
+          bzero(buf1, BUFSIZE);
+          strcpy(msgtype1, "ack");
+          memcpy(buf1, msgtype1, MSGTYPESIZE);
+          memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
+          n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+          if (n < 0) 
+            error("ERROR in ack sendto");
+        }
         comp = 1;
+        CSN = -1;
+        // TODO: Close file here
       }
     }
     
