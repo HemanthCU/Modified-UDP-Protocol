@@ -42,6 +42,7 @@ int main(int argc, char **argv) {
   int SeqNo; /* Sequence number of the received packet */
   int SeqNo1 = 20000; /* Sequence number of the packet */
   int msgsz;
+  int comp;
   FILE *fp;
 
 
@@ -73,16 +74,51 @@ int main(int argc, char **argv) {
   serveraddr.sin_port = htons(portno);
 
   /* get a message from the user */
-  bzero(msgtype, MSGTYPESIZE + 1);
+  bzero(msgtype1, MSGTYPESIZE + 1);
   printf("Please enter the command:\n");
-  fgets(msgtype, MSGTYPESIZE, stdin);
+  fgets(msgtype1, MSGTYPESIZE, stdin);
 
   if (strcmp(msgtype, "get") == 0) {
     bzero(filename, 1000);
-    printf("Please enter the filename:\n");
+    printf("\nPlease enter the filename:\n");
     fgets(filename, 1000, stdin);
     
+    bzero(buf1, BUFSIZE);
+    memcpy(buf1, msgtype1, MSGTYPESIZE);
+    sprintf(SN1, "%d", SeqNo1);
+    memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
+    memcpy(buf1 + HEADER, filename, MSGSIZE);
+    serverlen = sizeof(serveraddr);
+    n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+    if (n < 0) 
+      error("ERROR in sendto");
     
+    comp = 0;
+    
+    while (comp == 0) {
+      n = recvfrom(sockfd, buf, strlen(buf), 0, &serveraddr, &serverlen);
+      if (n < 0) 
+        error("ERROR in recvfrom");
+      bzero(buf, BUFSIZE);
+      memcpy(msgtype, buf, MSGTYPESIZE);
+
+      bzero(SN, SEQNOSIZE + 1);
+      memcpy(SN, buf + MSGTYPESIZE, SEQNOSIZE);
+      SeqNo = atoi(SN);
+      if (strcmp(msgtype, "ack") == 0) {
+        if (SeqNo == SeqNo1)
+          SeqNo1++;
+        else {
+          n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+          if (n < 0) 
+            error("ERROR in sendto");
+        }
+      } else if (strcmp(msgtype, "ftr") == 0) {
+
+      } else if (strcmp(msgtype, "fte") == 0) {
+        comp = 1;
+      }
+    }
     
     
   } else if (strcmp(msgtype, "put") == 0) {
