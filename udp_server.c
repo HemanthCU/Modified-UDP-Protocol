@@ -124,7 +124,7 @@ int main(int argc, char **argv) {
     memcpy(msgtype, buf, MSGTYPESIZE);
     
     bzero(SN, SEQNOSIZE + 1);
-    memcpy(SN, buf + 3, SEQNOSIZE);
+    memcpy(SN, buf + MSGTYPESIZE, SEQNOSIZE);
     SeqNo = atoi(SN);
 
     /* 
