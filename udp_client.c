@@ -107,8 +107,11 @@ int main(int argc, char **argv) {
       memcpy(SN, buf + MSGTYPESIZE, SEQNOSIZE);
       SeqNo = atoi(SN);
       if (strcmp(msgtype, "ack") == 0) {
-        if (SeqNo == SeqNo1)
+        if (SeqNo == SeqNo1) {
           SeqNo1++;
+          fp = fopen(filename, "w+");
+          fseek(fp, 0, SEEK_SET);
+        }
         else {
           n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
           if (n < 0) 
@@ -127,9 +130,10 @@ int main(int argc, char **argv) {
             error("ERROR in ack sendto");
           
           bzero(msg, MSGSIZE + 1);
-          memcpy(msg, buf1 + HEADER, MSGSIZE);
+          memcpy(msg, buf + HEADER, MSGSIZE);
           
-          // TODO: Write to file here
+          fwrite(msg, MSGSIZE, 1, fp);
+          fseek(fp, MSGSIZE, SEEK_CUR);
         } else if (SeqNo > CSN + 1) {
           bzero(buf1, BUFSIZE);
           strcpy(msgtype1, "ack");
@@ -161,9 +165,12 @@ int main(int argc, char **argv) {
             error("ERROR in ack sendto");
           
           bzero(msg, MSGSIZE + 1);
-          memcpy(msg, buf1 + HEADER, MSGSIZE);
+          memcpy(msg, buf + HEADER, MSGSIZE);
           
-          // TODO: Write to file here
+          fwrite(msg, MSGSIZE, 1, fp);
+          fclose(fp);
+          comp = 1;
+          CSN = -1;
         } else if (SeqNo > CSN + 1) {
           bzero(buf1, BUFSIZE);
           strcpy(msgtype1, "ack");
@@ -182,9 +189,6 @@ int main(int argc, char **argv) {
           if (n < 0) 
             error("ERROR in ack sendto");
         }
-        comp = 1;
-        CSN = -1;
-        // TODO: Close file here
       }
     }
     
