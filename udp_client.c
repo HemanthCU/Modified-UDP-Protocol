@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
   char SN[SEQNOSIZE + 1];
   char SN1[SEQNOSIZE + 1];
   char msg[MSGSIZE + 1];
-  char filename[1000];
+  char filename[20];
   int SeqNo; /* Sequence number of the received packet */
   int CSN = -1; /* Cumulative sequence number to track which packets arrived */
   int SeqNo1 = 20000; /* Sequence number of the packet */
@@ -75,20 +75,21 @@ int main(int argc, char **argv) {
   serveraddr.sin_port = htons(portno);
 
   /* get a message from the user */
-  bzero(msgtype1, MSGTYPESIZE + 1);
+  bzero(msgtype1, MSGTYPESIZE);
   printf("Please enter the command:\n");
-  fgets(msgtype1, MSGTYPESIZE, stdin);
+  fgets(msgtype1, MSGTYPESIZE + 1, stdin);
 
-  if (strcmp(msgtype, "get") == 0) {
-    bzero(filename, 1000);
+  if (strcmp(msgtype1, "get") == 0) {
+    bzero(filename, 20);
     printf("\nPlease enter the filename:\n");
-    fgets(filename, 1000, stdin);
-    
+    //fgets(filename, 20, stdin);
+
+    scanf("%s", filename);
     bzero(buf1, BUFSIZE);
     memcpy(buf1, msgtype1, MSGTYPESIZE);
     sprintf(SN1, "%d", SeqNo1);
     memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
-    memcpy(buf1 + HEADER, filename, MSGSIZE);
+    memcpy(buf1 + HEADER, filename, strlen(filename));
     serverlen = sizeof(serveraddr);
     n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
     if (n < 0) 
@@ -97,10 +98,12 @@ int main(int argc, char **argv) {
     comp = 0;
     
     while (comp == 0) {
-      n = recvfrom(sockfd, buf, strlen(buf), 0, &serveraddr, &serverlen);
+      bzero(buf, BUFSIZE);
+      n = recvfrom(sockfd, buf, BUFSIZE, 0, &serveraddr, &serverlen);
+
       if (n < 0) 
         error("ERROR in recvfrom");
-      bzero(buf, BUFSIZE);
+      bzero(msgtype, MSGTYPESIZE + 1);
       memcpy(msgtype, buf, MSGTYPESIZE);
 
       bzero(SN, SEQNOSIZE + 1);
@@ -167,7 +170,7 @@ int main(int argc, char **argv) {
           bzero(msg, MSGSIZE + 1);
           memcpy(msg, buf + HEADER, MSGSIZE);
           
-          fwrite(msg, MSGSIZE, 1, fp);
+          fwrite(msg, strlen(msg), 1, fp);
           fclose(fp);
           comp = 1;
           CSN = -1;
@@ -192,14 +195,13 @@ int main(int argc, char **argv) {
       }
     }
     
+  } else if (strcmp(msgtype1, "put") == 0) {
     
-  } else if (strcmp(msgtype, "put") == 0) {
-    
-  } else if (strcmp(msgtype, "del") == 0) {
+  } else if (strcmp(msgtype1, "del") == 0) {
 
-  } else if (strcmp(msgtype, "lis") == 0) {
+  } else if (strcmp(msgtype1, "lis") == 0) {
 
-  } else if (strcmp(msgtype, "exi") == 0) {
+  } else if (strcmp(msgtype1, "exi") == 0) {
 
   } else {
     error("ERROR message sent");

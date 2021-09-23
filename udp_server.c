@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
   char SN[SEQNOSIZE + 1];
   char SN1[SEQNOSIZE + 1];
   char msg[MSGSIZE + 1];
-  char filename[1000];
+  char filename[20];
   char *hostaddrp; /* dotted decimal host addr string */
   int optval; /* flag value for setsockopt */
   int n; /* message byte size */
@@ -136,8 +136,11 @@ int main(int argc, char **argv) {
       strcpy(msgtype1, "ack");
       memcpy(buf1, msgtype1, MSGTYPESIZE);
       memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
+      //printf("sent ack %s\n", SN);
+      //printf("buf1 = %s\n", buf1);
       n = sendto(sockfd, buf1, strlen(buf1), 0, 
         (struct sockaddr *) &clientaddr, clientlen);
+      printf("sent buf1 = %s\n", buf1);
       if (n < 0) 
         error("ERROR in ack sendto");
     }
@@ -148,13 +151,13 @@ int main(int argc, char **argv) {
     if (strcmp(msgtype, "get") == 0) {
       // Initial get message. This will initiate a send from the server back to the client. If this is also
       // the ending of the file, send fte message instead.
-      bzero(filename, 1000);
+      bzero(filename, 20);
       bzero(msg, MSGSIZE + 1);
-      memcpy(filename, buf + HEADER, 1000);
-      fp = fopen(filename, "w+");
+      memcpy(filename, buf + HEADER, 20);
+      fp = fopen(filename, "r");
       fseek(fp, 0, SEEK_SET);
-      msgsz = (int) fread(msg, MSGSIZE, 1, fp);
-      
+      msgsz = fread(msg, MSGSIZE, 1, fp);
+      printf("msgsz = %d\n", msgsz);
       if (msgsz < MSGSIZE/* End of file in the case that complete file fits in 1 packet */) {
         bzero(buf1, BUFSIZE);
         strcpy(msgtype1, "fte");
