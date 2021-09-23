@@ -116,9 +116,9 @@ int main(int argc, char **argv) {
     hostaddrp = inet_ntoa(clientaddr.sin_addr);
     if (hostaddrp == NULL)
       error("ERROR on inet_ntoa\n");
-    printf("server received datagram from %s (%s)\n", 
+    /*printf("server received datagram from %s (%s)\n", 
 	   hostp->h_name, hostaddrp);
-    printf("server received %d/%d bytes: %s\n", strlen(buf), n, buf);
+    printf("server received %d/%d bytes: %s\n", (int) strlen(buf), n, buf);*/
 
     bzero(msgtype, MSGTYPESIZE + 1);
     memcpy(msgtype, buf, MSGTYPESIZE);
@@ -136,11 +136,9 @@ int main(int argc, char **argv) {
       strcpy(msgtype1, "ack");
       memcpy(buf1, msgtype1, MSGTYPESIZE);
       memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
-      //printf("sent ack %s\n", SN);
-      //printf("buf1 = %s\n", buf1);
       n = sendto(sockfd, buf1, strlen(buf1), 0, 
         (struct sockaddr *) &clientaddr, clientlen);
-      printf("sent buf1 = %s\n", buf1);
+      //printf("sent buf1 = %s\n", buf1);
       if (n < 0) 
         error("ERROR in ack sendto");
     }
@@ -157,8 +155,7 @@ int main(int argc, char **argv) {
       fp = fopen(filename, "r");
       fseek(fp, 0, SEEK_SET);
       msgsz = fread(msg, MSGSIZE, 1, fp);
-      printf("msgsz = %d\n", msgsz);
-      if (msgsz < MSGSIZE/* End of file in the case that complete file fits in 1 packet */) {
+      if (msgsz == 0/* End of file in the case that complete file fits in 1 packet */) {
         bzero(buf1, BUFSIZE);
         strcpy(msgtype1, "fte");
         memcpy(buf1, msgtype1, MSGTYPESIZE);
@@ -187,10 +184,11 @@ int main(int argc, char **argv) {
     } else if (strcmp(msgtype, "ack") == 0) {
       // Acknowledgement message from client when receiving file after get command.
       
-      fseek(fp, MSGSIZE, SEEK_CUR);
+      //fseek(fp, MSGSIZE, SEEK_CUR);
+      bzero(msg, MSGSIZE + 1);
       msgsz = (int) fread(msg, MSGSIZE, 1, fp);
       
-      if (msgsz < MSGSIZE/* End of file */) {
+      if (msgsz == 0/* End of file */) {
         bzero(buf1, BUFSIZE);
         strcpy(msgtype1, "fte");
         memcpy(buf1, msgtype1, MSGTYPESIZE);

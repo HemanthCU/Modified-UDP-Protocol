@@ -91,7 +91,8 @@ int main(int argc, char **argv) {
     memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
     memcpy(buf1 + HEADER, filename, strlen(filename));
     serverlen = sizeof(serveraddr);
-    n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+    n = sendto(sockfd, buf1, strlen(buf1), 0,
+               (struct sockaddr *) &serveraddr, serverlen);
     if (n < 0) 
       error("ERROR in sendto");
     
@@ -99,7 +100,8 @@ int main(int argc, char **argv) {
     
     while (comp == 0) {
       bzero(buf, BUFSIZE);
-      n = recvfrom(sockfd, buf, BUFSIZE, 0, &serveraddr, &serverlen);
+      n = recvfrom(sockfd, buf, BUFSIZE, 0,
+                   (struct sockaddr *) &serveraddr, &serverlen);
 
       if (n < 0) 
         error("ERROR in recvfrom");
@@ -116,7 +118,8 @@ int main(int argc, char **argv) {
           fseek(fp, 0, SEEK_SET);
         }
         else {
-          n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+          n = sendto(sockfd, buf1, strlen(buf1), 0,
+                     (struct sockaddr *) &serveraddr, serverlen);
           if (n < 0) 
             error("ERROR in sendto");
         }
@@ -128,22 +131,24 @@ int main(int argc, char **argv) {
           strcpy(msgtype1, "ack");
           memcpy(buf1, msgtype1, MSGTYPESIZE);
           memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
-          n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+          n = sendto(sockfd, buf1, strlen(buf1), 0,
+                     (struct sockaddr *) &serveraddr, serverlen);
           if (n < 0) 
             error("ERROR in ack sendto");
           
           bzero(msg, MSGSIZE + 1);
           memcpy(msg, buf + HEADER, MSGSIZE);
           
-          fwrite(msg, MSGSIZE, 1, fp);
-          fseek(fp, MSGSIZE, SEEK_CUR);
+          fwrite(msg, strlen(msg), 1, fp);
+          //fseek(fp, MSGSIZE, SEEK_CUR);
         } else if (SeqNo > CSN + 1) {
           bzero(buf1, BUFSIZE);
           strcpy(msgtype1, "ack");
           memcpy(buf1, msgtype1, MSGTYPESIZE);
           sprintf(SN, "%d", CSN);
           memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
-          n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+          n = sendto(sockfd, buf1, strlen(buf1), 0,
+                     (struct sockaddr *) &serveraddr, serverlen);
           if (n < 0) 
             error("ERROR in ack sendto");
         } else {
@@ -151,7 +156,8 @@ int main(int argc, char **argv) {
           strcpy(msgtype1, "ack");
           memcpy(buf1, msgtype1, MSGTYPESIZE);
           memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
-          n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+          n = sendto(sockfd, buf1, strlen(buf1), 0,
+                     (struct sockaddr *) &serveraddr, serverlen);
           if (n < 0) 
             error("ERROR in ack sendto");
         }
@@ -163,7 +169,8 @@ int main(int argc, char **argv) {
           strcpy(msgtype1, "ack");
           memcpy(buf1, msgtype1, MSGTYPESIZE);
           memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
-          n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+          n = sendto(sockfd, buf1, strlen(buf1), 0,
+                     (struct sockaddr *) &serveraddr, serverlen);
           if (n < 0) 
             error("ERROR in ack sendto");
           
@@ -180,7 +187,8 @@ int main(int argc, char **argv) {
           memcpy(buf1, msgtype1, MSGTYPESIZE);
           sprintf(SN, "%d", CSN);
           memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
-          n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+          n = sendto(sockfd, buf1, strlen(buf1), 0,
+                     (struct sockaddr *) &serveraddr, serverlen);
           if (n < 0) 
             error("ERROR in ack sendto");
         } else {
@@ -188,7 +196,8 @@ int main(int argc, char **argv) {
           strcpy(msgtype1, "ack");
           memcpy(buf1, msgtype1, MSGTYPESIZE);
           memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
-          n = sendto(sockfd, buf1, strlen(buf1), 0, &serveraddr, serverlen);
+          n = sendto(sockfd, buf1, strlen(buf1), 0,
+                     (struct sockaddr *) &serveraddr, serverlen);
           if (n < 0) 
             error("ERROR in ack sendto");
         }
