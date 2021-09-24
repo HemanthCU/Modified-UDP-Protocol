@@ -46,10 +46,12 @@ int main(int argc, char **argv) {
   int optval; /* flag value for setsockopt */
   int n; /* message byte size */
   int SeqNo; /* Sequence number of the received packet */
+  int CSN = -1; /* Cumulative sequence number to track which packets arrived */
   int SeqNo1 = 10000; /* Sequence number of the packet */
   int msgsz;
   FILE *fp;
   int comp;
+  int comp1;
   int retry;
   
 
@@ -115,9 +117,6 @@ int main(int argc, char **argv) {
 		 (struct sockaddr *) &clientaddr, &clientlen);
     if (n < 0) {
       retry = 1;
-      /*n = sendto(sockfd, buf1, strlen(buf1), 0, 
-        (struct sockaddr *) &clientaddr, clientlen);
-      printf("Server resent %s %d to client after timeout\n", msgtype1, SeqNo1);*/
     }
 
     /* 
@@ -154,18 +153,21 @@ int main(int argc, char **argv) {
       memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
       n = sendto(sockfd, buf1, strlen(buf1), 0, 
         (struct sockaddr *) &clientaddr, clientlen);
-      printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo, msgtype, SeqNo);
+      if (retry != 1)
+        printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo, msgtype, SeqNo);
+      else
+        printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo, msgtype, SeqNo);
       if (n < 0) 
         error("ERROR in ack sendto");
     }
 
     /*
-     * Compare which action is being performed based on 3 char message
+     * compare which action is being performed based on 3 char message
      */
     if (strcmp(msgtype, "get") == 0) {
       // Initial get message. This will initiate a send from the server back to the client. If this is also
       // the ending of the file, send fte message instead.
-      comp = 0;
+      comp1 = 0;
       if (retry != 1) {
         bzero(filename, 20);
         bzero(msg, MSGSIZE + 1);
@@ -187,7 +189,7 @@ int main(int argc, char **argv) {
             error("ERROR in fte sendto");
           SeqNo1++;
           fclose(fp);
-          comp = 1;
+          comp1 = 1;
         } else {
           bzero(buf1, BUFSIZE);
           strcpy(msgtype1, "ftr");
@@ -205,13 +207,13 @@ int main(int argc, char **argv) {
       } else {
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
-        printf("Server resent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
+        printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
         if (n < 0) 
           error("ERROR in fte sendto"); 
       }
     } else if (strcmp(msgtype, "ack") == 0) {
       // Acknowledgement message from client when receiving file after get command.
-      if (SeqNo == SeqNo1 - 1 && comp == 0) {
+      if (SeqNo == SeqNo1 - 1 && comp1 == 0) {
         bzero(msg, MSGSIZE + 1);
         msgsz = (int) fread(msg, MSGSIZE, 1, fp);
 
@@ -229,7 +231,7 @@ int main(int argc, char **argv) {
             error("ERROR in fte sendto");
           SeqNo1++;
           fclose(fp);
-          comp = 1;
+          comp1 = 1;
         } else {
           bzero(buf1, BUFSIZE);
           strcpy(msgtype1, "ftr");
@@ -244,12 +246,12 @@ int main(int argc, char **argv) {
             error("ERROR in ftr sendto");
           SeqNo1++;
         }
-      } else if (comp == 1) {
+      } else if (comp1 == 1) {
         printf("Server completed get operation after getting %s %d\n", msgtype, SeqNo);    
       } else {
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
-        printf("Server resent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
+        printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
         if (n < 0) 
           error("ERROR in fte sendto");        
       }
@@ -257,17 +259,34 @@ int main(int argc, char **argv) {
     } else if (strcmp(msgtype, "put") == 0) {
       // Initial put message. Server will send acknowledgement, create file with the filename
       // in the file system and expect ftr messages from the client.
-
-
-
+      if (retry != 1 && (CSN < 0 || CSN == SeqNo - 1)) {
+        comp = 0;
+        CSN = SeqNo;
+        bzero(filename, 20);
+        memcpy(filename, buf + HEADER, 20);
+        fp = fopen(filename, "w+");
+        fseek(fp, 0, SEEK_SET);
+      }
     } else if (strcmp(msgtype, "ftr") == 0) {
       // File transfer message. This is part of the file being sent and will be combined with
       // the other parts previously received to form the file.
-
+      if (retry != 1 && (CSN < 0 || CSN == SeqNo - 1)) {
+        CSN = SeqNo;
+        bzero(msg, MSGSIZE + 1);
+        memcpy(msg, buf + HEADER, MSGSIZE);
+        fwrite(msg, strlen(msg), 1, fp);
+      }
     } else if (strcmp(msgtype, "fte") == 0) {
       // File transfer end message. This is the last part of the file being sent and will be
       // combined with the other parts previously received to form the completed file.
-
+      if (retry != 1 && (CSN < 0 || CSN == SeqNo - 1)) {
+        CSN = SeqNo;
+        bzero(msg, MSGSIZE + 1);
+        memcpy(msg, buf + HEADER, MSGSIZE);
+        fwrite(msg, strlen(msg), 1, fp);
+        fclose(fp);
+        comp = 1;
+      }
     } else if (strcmp(msgtype, "del") == 0) {
       // Initial delete message. Server will delete the requested file and acknowledge.
 

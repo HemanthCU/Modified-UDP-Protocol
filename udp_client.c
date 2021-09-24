@@ -50,6 +50,7 @@ int main(int argc, char **argv) {
   int msgsz;
   int comp;
   int testcount = 1;
+  int retry = 0;
   FILE *fp;
 
 
@@ -72,6 +73,12 @@ int main(int argc, char **argv) {
       fprintf(stderr,"ERROR, no such host as %s\n", hostname);
       exit(0);
   }
+
+  struct timeval tv;
+  tv.tv_sec = 10;
+  tv.tv_usec = 0;
+  setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,
+             (struct timeval *)&tv,sizeof(struct timeval));
 
   /* build the server's Internet address */
   bzero((char *) &serveraddr, sizeof(serveraddr));
@@ -109,22 +116,24 @@ int main(int argc, char **argv) {
       n = recvfrom(sockfd, buf, BUFSIZE, 0,
                    (struct sockaddr *) &serveraddr, &serverlen);
 
-      if (n < 0) 
-        error("ERROR in recvfrom");
-      bzero(msgtype, MSGTYPESIZE + 1);
-      memcpy(msgtype, buf, MSGTYPESIZE);
+      if (n < 0) {
+        retry = 1;
+      }
+      if (retry != 1) {
+        bzero(msgtype, MSGTYPESIZE + 1);
+        memcpy(msgtype, buf, MSGTYPESIZE);
 
-      bzero(SN, SEQNOSIZE + 1);
-      memcpy(SN, buf + MSGTYPESIZE, SEQNOSIZE);
-      SeqNo = atoi(SN);
-      printf("Client received %d/%d bytes from server with Seqno %d\n", (int) strlen(buf), n, SeqNo);
+        bzero(SN, SEQNOSIZE + 1);
+        memcpy(SN, buf + MSGTYPESIZE, SEQNOSIZE);
+        SeqNo = atoi(SN);
+        printf("Client received %d/%d bytes from server with Seqno %d\n", (int) strlen(buf), n, SeqNo);
+      }
       if (strcmp(msgtype, "ack") == 0) {
         if (SeqNo == SeqNo1) {
           SeqNo1++;
           fp = fopen(filename, "w+");
           fseek(fp, 0, SEEK_SET);
-        }
-        else {
+        } else {
           n = sendto(sockfd, buf1, strlen(buf1), 0,
                      (struct sockaddr *) &serveraddr, serverlen);
           if (n < 0) 
@@ -220,6 +229,52 @@ int main(int argc, char **argv) {
     }
     
   } else if (strcmp(msgtype1, "put") == 0) {
+    bzero(filename, 20);
+    printf("\nPlease enter the filename:\n");
+    //fgets(filename, 20, stdin);
+
+    scanf("%s", filename);
+    bzero(buf1, BUFSIZE);
+    memcpy(buf1, msgtype1, MSGTYPESIZE);
+    sprintf(SN1, "%d", SeqNo1);
+    memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
+    memcpy(buf1 + HEADER, filename, strlen(filename));
+    serverlen = sizeof(serveraddr);
+    n = sendto(sockfd, buf1, strlen(buf1), 0,
+               (struct sockaddr *) &serveraddr, serverlen);
+    if (n < 0) 
+      error("ERROR in sendto");
+    
+    comp = 0;
+    
+    while (comp == 0) {
+      bzero(buf, BUFSIZE);
+      n = recvfrom(sockfd, buf, BUFSIZE, 0,
+                   (struct sockaddr *) &serveraddr, &serverlen);
+
+      if (n < 0) 
+        error("ERROR in recvfrom");
+      bzero(msgtype, MSGTYPESIZE + 1);
+      memcpy(msgtype, buf, MSGTYPESIZE);
+
+      bzero(SN, SEQNOSIZE + 1);
+      memcpy(SN, buf + MSGTYPESIZE, SEQNOSIZE);
+      SeqNo = atoi(SN);
+      printf("Client received %d/%d bytes from server with Seqno %d\n", (int) strlen(buf), n, SeqNo);
+      if (strcmp(msgtype, "ack") == 0) {
+        if (SeqNo == SeqNo1) {
+          SeqNo1++;
+          fp = fopen(filename, "r");
+          fseek(fp, 0, SEEK_SET);
+          
+        } else {
+          n = sendto(sockfd, buf1, strlen(buf1), 0,
+                     (struct sockaddr *) &serveraddr, serverlen);
+          if (n < 0) 
+            error("ERROR in sendto");
+        }
+      }
+    }
     
   } else if (strcmp(msgtype1, "del") == 0) {
 
