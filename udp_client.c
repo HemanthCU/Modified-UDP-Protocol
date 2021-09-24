@@ -142,7 +142,7 @@ int main(int argc, char **argv) {
             waitFor(12);
             testcount--;
           }*/
-          if (SeqNo % 5 == 2 && testcount % 3 == 1) {
+          if (0 && SeqNo % 500 == 2) {
             testcount++;
           } else {
             n = sendto(sockfd, buf1, strlen(buf1), 0,
