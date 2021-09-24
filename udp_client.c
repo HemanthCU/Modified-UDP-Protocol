@@ -25,6 +25,11 @@ void error(char *msg) {
   exit(0);
 }
 
+/*void waitFor (unsigned int secs) {
+    unsigned int retTime = time(0) + secs;   // Get finishing time.
+    while (time(0) < retTime);               // Loop until it arrives.
+}*/
+
 int main(int argc, char **argv) {
   int sockfd, portno, n;
   int serverlen;
@@ -44,6 +49,7 @@ int main(int argc, char **argv) {
   int SeqNo1 = 20000; /* Sequence number of the packet */
   int msgsz;
   int comp;
+  int testcount = 1;
   FILE *fp;
 
 
@@ -111,6 +117,7 @@ int main(int argc, char **argv) {
       bzero(SN, SEQNOSIZE + 1);
       memcpy(SN, buf + MSGTYPESIZE, SEQNOSIZE);
       SeqNo = atoi(SN);
+      printf("Client received %d/%d bytes from server with Seqno %d\n", (int) strlen(buf), n, SeqNo);
       if (strcmp(msgtype, "ack") == 0) {
         if (SeqNo == SeqNo1) {
           SeqNo1++;
@@ -131,8 +138,16 @@ int main(int argc, char **argv) {
           strcpy(msgtype1, "ack");
           memcpy(buf1, msgtype1, MSGTYPESIZE);
           memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
-          n = sendto(sockfd, buf1, strlen(buf1), 0,
-                     (struct sockaddr *) &serveraddr, serverlen);
+          /*if (testcount == 1) {
+            waitFor(12);
+            testcount--;
+          }*/
+          if (SeqNo % 5 == 2 && testcount % 3 == 1) {
+            testcount++;
+          } else {
+            n = sendto(sockfd, buf1, strlen(buf1), 0,
+                       (struct sockaddr *) &serveraddr, serverlen);
+          }
           if (n < 0) 
             error("ERROR in ack sendto");
           
