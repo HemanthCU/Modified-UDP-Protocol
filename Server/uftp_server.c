@@ -275,6 +275,7 @@ int main(int argc, char **argv) {
         CSN = SeqNo;
         bzero(filename, 20);
         memcpy(filename, buf + HEADER, 20);
+        printf("new file = %s", filename);
         fp = fopen(filename, "w+");
         fseek(fp, 0, SEEK_SET);
       }
@@ -297,6 +298,7 @@ int main(int argc, char **argv) {
         fwrite(msg, strlen(msg), 1, fp);
         fclose(fp);
         comp = 1;
+        CSN = -1;
       }
     } else if (strcmp(msgtype, "del") == 0) {
       // Initial delete message. Server will delete the requested file and acknowledge.
