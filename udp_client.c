@@ -77,8 +77,8 @@ int main(int argc, char **argv) {
   struct timeval tv;
   tv.tv_sec = 10;
   tv.tv_usec = 0;
-  setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,
-             (struct timeval *)&tv,sizeof(struct timeval));
+  /*setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,
+             (struct timeval *)&tv,sizeof(struct timeval));*/
 
   /* build the server's Internet address */
   bzero((char *) &serveraddr, sizeof(serveraddr));
@@ -113,6 +113,7 @@ int main(int argc, char **argv) {
     
     while (comp == 0) {
       bzero(buf, BUFSIZE);
+      retry = 0;
       n = recvfrom(sockfd, buf, BUFSIZE, 0,
                    (struct sockaddr *) &serveraddr, &serverlen);
 
@@ -251,11 +252,12 @@ int main(int argc, char **argv) {
     
     while (comp == 0) {
       bzero(buf, BUFSIZE);
+      retry = 0;
       n = recvfrom(sockfd, buf, BUFSIZE, 0,
                    (struct sockaddr *) &serveraddr, &serverlen);
 
       if (n < 0) 
-        error("ERROR in recvfrom");
+        retry = 1;
       bzero(msgtype, MSGTYPESIZE + 1);
       memcpy(msgtype, buf, MSGTYPESIZE);
 

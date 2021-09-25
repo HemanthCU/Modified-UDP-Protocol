@@ -53,6 +53,7 @@ int main(int argc, char **argv) {
   int comp;
   int comp1;
   int retry;
+  int testcount = 1;
   
 
   /* 
@@ -151,14 +152,19 @@ int main(int argc, char **argv) {
       strcpy(msgtype1, "ack");
       memcpy(buf1, msgtype1, MSGTYPESIZE);
       memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
-      n = sendto(sockfd, buf1, strlen(buf1), 0, 
-        (struct sockaddr *) &clientaddr, clientlen);
+      if (0 && testcount % 10000 == 2) {
+        // Nothing
+      } else {
+        n = sendto(sockfd, buf1, strlen(buf1), 0, 
+          (struct sockaddr *) &clientaddr, clientlen);
+      }
       if (retry != 1)
         printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo, msgtype, SeqNo);
       else
         printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo, msgtype, SeqNo);
-      if (n < 0) 
-        error("ERROR in ack sendto");
+      /*if (n < 0) 
+        error("ERROR in ack sendto");*/
+      //testcount++;
     }
 
     /*
@@ -239,12 +245,17 @@ int main(int argc, char **argv) {
           sprintf(SN1, "%d", SeqNo1);
           memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
           memcpy(buf1 + HEADER, msg, MSGSIZE);
-          n = sendto(sockfd, buf1, strlen(buf1), 0, 
-            (struct sockaddr *) &clientaddr, clientlen);
+          if (0 && testcount % 10000 == 2) {
+            // Nothing
+          } else {
+            n = sendto(sockfd, buf1, strlen(buf1), 0, 
+              (struct sockaddr *) &clientaddr, clientlen);
+          }
           printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
           if (n < 0) 
             error("ERROR in ftr sendto");
           SeqNo1++;
+          //testcount++;
         }
       } else if (comp1 == 1) {
         printf("Server completed get operation after getting %s %d\n", msgtype, SeqNo);    
