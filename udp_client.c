@@ -89,10 +89,10 @@ int main(int argc, char **argv) {
   serveraddr.sin_port = htons(portno);
 
   /* get a message from the user */
-  bzero(msgtype1, MSGTYPESIZE);
-  printf("Please enter the command:\n");
-  fgets(msgtype1, MSGTYPESIZE + 1, stdin);
   while (running) {
+    bzero(msgtype1, MSGTYPESIZE);
+    printf("Please enter the command:\n");
+    scanf("%s", msgtype1);
     if (strcmp(msgtype1, "get") == 0) {
       bzero(filename, 20);
       printf("\nPlease enter the filename:\n");
