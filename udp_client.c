@@ -245,6 +245,8 @@ int main(int argc, char **argv) {
     if (n < 0) 
       error("ERROR in sendto");
     
+    fp = fopen(filename, "r");
+    fseek(fp, 0, SEEK_SET);
     comp = 0;
     
     while (comp == 0) {
@@ -264,18 +266,47 @@ int main(int argc, char **argv) {
       if (strcmp(msgtype, "ack") == 0) {
         if (SeqNo == SeqNo1) {
           SeqNo1++;
-          fp = fopen(filename, "r");
-          fseek(fp, 0, SEEK_SET);
-          
+          bzero(msg, MSGSIZE + 1);
+          msgsz = (int) fread(msg, MSGSIZE, 1, fp);
+
+          if (msgsz == 0/* End of file */) {
+            bzero(buf1, BUFSIZE);
+            strcpy(msgtype1, "fte");
+            memcpy(buf1, msgtype1, MSGTYPESIZE);
+            sprintf(SN1, "%d", SeqNo1);
+            memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
+            memcpy(buf1 + HEADER, msg, MSGSIZE);
+            n = sendto(sockfd, buf1, strlen(buf1), 0,
+                      (struct sockaddr *) &serveraddr, serverlen);
+            printf("Client sent %s %d to server after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
+            if (n < 0) 
+              error("ERROR in fte sendto");
+            fclose(fp);
+            comp = 1;
+          } else {
+            bzero(buf1, BUFSIZE);
+            strcpy(msgtype1, "ftr");
+            memcpy(buf1, msgtype1, MSGTYPESIZE);
+            sprintf(SN1, "%d", SeqNo1);
+            memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
+            memcpy(buf1 + HEADER, msg, MSGSIZE);
+            n = sendto(sockfd, buf1, strlen(buf1), 0,
+                      (struct sockaddr *) &serveraddr, serverlen);
+            printf("Client sent %s %d to server after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
+            if (n < 0) 
+              error("ERROR in ftr sendto");
+          }
         } else {
           n = sendto(sockfd, buf1, strlen(buf1), 0,
                      (struct sockaddr *) &serveraddr, serverlen);
           if (n < 0) 
             error("ERROR in sendto");
         }
+      } else {
+        n = sendto(sockfd, buf1, strlen(buf1), 0,
+                   (struct sockaddr *) &serveraddr, serverlen);
       }
-    }
-    
+    }   
   } else if (strcmp(msgtype1, "del") == 0) {
 
   } else if (strcmp(msgtype1, "lis") == 0) {
