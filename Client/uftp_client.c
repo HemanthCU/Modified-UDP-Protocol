@@ -100,8 +100,6 @@ int main(int argc, char **argv) {
     if (strcmp(msgtype1, "get") == 0) {
       bzero(filename, 20);
       printf("\nPlease enter the filename:\n");
-      //fgets(filename, 20, stdin);
-
       scanf("%s", filename);
       bzero(buf1, BUFSIZE);
       memcpy(buf1, msgtype1, MSGTYPESIZE);
@@ -338,11 +336,10 @@ int main(int argc, char **argv) {
         retry = 0;
         n = recvfrom(sockfd, buf, BUFSIZE, 0,
                      (struct sockaddr *) &serveraddr, &serverlen);
-
         if (n < 0) {
           retry = 1;
         }
-        if (!retry) {
+        if (retry != 1) {
           bzero(msgtype, MSGTYPESIZE + 1);
           memcpy(msgtype, buf, MSGTYPESIZE);
 
@@ -350,9 +347,72 @@ int main(int argc, char **argv) {
           memcpy(SN, buf + MSGTYPESIZE, SEQNOSIZE);
           SeqNo = atoi(SN);
           printf("Client received %d/%d bytes from server with %s Seqno %d\n", (int) strlen(buf), n, msgtype, SeqNo);
+        }
+        if (strcmp(msgtype, "ack") == 0) {
           if (SeqNo == SeqNo1) {
             SeqNo1 = (SeqNo1 + 1) % 100000;
+            printf("The List of files on the server are:\n");
+          } else {
+            n = sendto(sockfd, buf1, strlen(buf1), 0,
+                       (struct sockaddr *) &serveraddr, serverlen);
+            if (n < 0) 
+              error("ERROR in sendto");
+          }
+        } else if (strcmp(msgtype, "lit") == 0) {
+          if (CSN < 0 || SeqNo == (CSN + 1) % 100000) {
+            CSN = SeqNo;
+            
+            bzero(buf1, BUFSIZE);
+            strcpy(msgtype1, "acl");
+            memcpy(buf1, msgtype1, MSGTYPESIZE);
+            memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
+            n = sendto(sockfd, buf1, strlen(buf1), 0,
+                       (struct sockaddr *) &serveraddr, serverlen);
+            if (n < 0) 
+              error("ERROR in acl sendto");
+            
+            bzero(msg, MSGSIZE + 1);
+            memcpy(msg, buf + HEADER, MSGSIZE);
+            
+            printf("%s\n", msg);
+          } else {
+            bzero(buf1, BUFSIZE);
+            strcpy(msgtype1, "acl");
+            memcpy(buf1, msgtype1, MSGTYPESIZE);
+            sprintf(SN, "%d", CSN);
+            memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
+            n = sendto(sockfd, buf1, strlen(buf1), 0,
+                       (struct sockaddr *) &serveraddr, serverlen);
+            if (n < 0) 
+              error("ERROR in acl sendto");
+          }
+        } else if (strcmp(msgtype, "lie") == 0) {
+          if (CSN < 0 || SeqNo == (CSN + 1) % 100000) {
+            CSN = SeqNo;
+            
+            bzero(buf1, BUFSIZE);
+            strcpy(msgtype1, "acl");
+            memcpy(buf1, msgtype1, MSGTYPESIZE);
+            memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
+            n = sendto(sockfd, buf1, strlen(buf1), 0,
+                       (struct sockaddr *) &serveraddr, serverlen);
+            if (n < 0) 
+              error("ERROR in acl sendto");
+            
+            bzero(msg, MSGSIZE + 1);
+            memcpy(msg, buf + HEADER, MSGSIZE);
             comp = 1;
+            CSN = -1;
+          } else {
+            bzero(buf1, BUFSIZE);
+            strcpy(msgtype1, "acl");
+            memcpy(buf1, msgtype1, MSGTYPESIZE);
+            sprintf(SN, "%d", CSN);
+            memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
+            n = sendto(sockfd, buf1, strlen(buf1), 0,
+                       (struct sockaddr *) &serveraddr, serverlen);
+            if (n < 0) 
+              error("ERROR in acl sendto");
           }
         }
       }
