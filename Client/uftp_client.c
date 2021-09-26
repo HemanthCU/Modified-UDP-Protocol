@@ -314,6 +314,9 @@ int main(int argc, char **argv) {
         }
       }   
     } else if (strcmp(msgtype1, "del") == 0) {
+      bzero(filename, 20);
+      printf("\nPlease enter the filename:\n");
+      scanf("%s", filename);
       bzero(buf1, BUFSIZE);
       memcpy(buf1, msgtype1, MSGTYPESIZE);
       sprintf(SN1, "%d", SeqNo1);
@@ -323,6 +326,7 @@ int main(int argc, char **argv) {
         memset(SN1, '0', SEQNOSIZE - len);
       }
       memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
+      memcpy(buf1 + HEADER, filename, strlen(filename));
       serverlen = sizeof(serveraddr);
       n = sendto(sockfd, buf1, strlen(buf1), 0,
                  (struct sockaddr *) &serveraddr, serverlen);
@@ -494,7 +498,7 @@ int main(int argc, char **argv) {
       }
       running = 0;
     } else {
-      error("ERROR message sent");
+      printf("Inavlid Command\n");
     }
   }
   return 0;
