@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <dirent.h> 
 
 #define BUFSIZE 1024
 #define MSGTYPESIZE 3
@@ -360,7 +361,7 @@ int main(int argc, char **argv) {
           comp1 = 1;
         } else {
           bzero(msg, MSGSIZE + 1);
-          strcpy(msg, dir);
+          strcpy(msg, dir->d_name);
           bzero(buf1, BUFSIZE);
           strcpy(msgtype1, "lit");
           memcpy(buf1, msgtype1, MSGTYPESIZE);
@@ -411,7 +412,7 @@ int main(int argc, char **argv) {
           comp1 = 1;
         } else {
           bzero(msg, MSGSIZE + 1);
-          strcpy(msg, dir);
+          strcpy(msg, dir->d_name);
           bzero(buf1, BUFSIZE);
           strcpy(msgtype1, "lit");
           memcpy(buf1, msgtype1, MSGTYPESIZE);
