@@ -414,8 +414,9 @@ int main(int argc, char **argv) {
             
             bzero(msg, MSGSIZE + 1);
             memcpy(msg, buf + HEADER, MSGSIZE);
-            
-            printf("%s\n", msg);
+            if (strcmp(msg, ".") != 0 && strcmp(msg, "..") != 0 && strcmp(msg, "server") != 0
+                && strcmp(msg, "uftp_server.c") != 0)
+              printf("%s\n", msg);
           } else {
             bzero(buf1, BUFSIZE);
             strcpy(msgtype1, "acl");
