@@ -80,8 +80,8 @@ int main(int argc, char **argv) {
   struct timeval tv;
   tv.tv_sec = 4;
   tv.tv_usec = 0;
-  setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,
-             (struct timeval *)&tv,sizeof(struct timeval));
+  /*setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,
+             (struct timeval *)&tv,sizeof(struct timeval));*/
 
   /* build the server's Internet address */
   bzero((char *) &serveraddr, sizeof(serveraddr));
@@ -251,7 +251,6 @@ int main(int argc, char **argv) {
         retry = 0;
         n = recvfrom(sockfd, buf, BUFSIZE, 0,
                      (struct sockaddr *) &serveraddr, &serverlen);
-
         if (n < 0) 
           retry = 1;
         bzero(msgtype, MSGTYPESIZE + 1);
@@ -307,6 +306,7 @@ int main(int argc, char **argv) {
           } else {
             n = sendto(sockfd, buf1, strlen(buf1), 0,
                        (struct sockaddr *) &serveraddr, serverlen);
+            printf("Client resent buf1 to server SeqNo = %d SeqNo1 = %d\n", SeqNo, SeqNo1);
             if (n < 0) 
               error("ERROR in sendto");
           }

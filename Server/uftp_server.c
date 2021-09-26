@@ -153,14 +153,10 @@ int main(int argc, char **argv) {
       strcpy(msgtype1, "ack");
       memcpy(buf1, msgtype1, MSGTYPESIZE);
       memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
-      if (0 && testcount % 10000 == 2) {
-        // Nothing
-      } else {
-        n = sendto(sockfd, buf1, strlen(buf1), 0, 
-          (struct sockaddr *) &clientaddr, clientlen);
-        if (n < 0) 
-          error("ERROR in ack sendto");
-      }
+      n = sendto(sockfd, buf1, strlen(buf1), 0, 
+        (struct sockaddr *) &clientaddr, clientlen);
+      if (n < 0) 
+        error("ERROR in ack sendto");
       if (retry != 1)
         printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo, msgtype, SeqNo);
       else
