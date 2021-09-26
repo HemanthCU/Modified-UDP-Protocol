@@ -123,7 +123,6 @@ int main(int argc, char **argv) {
         retry = 0;
         n = recvfrom(sockfd, buf, BUFSIZE, 0,
                      (struct sockaddr *) &serveraddr, &serverlen);
-
         if (n < 0) {
           retry = 1;
         }
@@ -134,7 +133,7 @@ int main(int argc, char **argv) {
           bzero(SN, SEQNOSIZE + 1);
           memcpy(SN, buf + MSGTYPESIZE, SEQNOSIZE);
           SeqNo = atoi(SN);
-          printf("Client received %d/%d bytes from server with Seqno %d\n", (int) strlen(buf), n, SeqNo);
+          printf("Client received %d/%d bytes from server with %s Seqno %d\n", (int) strlen(buf), n, msgtype, SeqNo);
         }
         if (strcmp(msgtype, "ack") == 0) {
           if (SeqNo == SeqNo1) {
@@ -173,20 +172,11 @@ int main(int argc, char **argv) {
             
             fwrite(msg, strlen(msg), 1, fp);
             //fseek(fp, MSGSIZE, SEEK_CUR);
-          } else if (SeqNo > (CSN + 1) % 100000) {
-            bzero(buf1, BUFSIZE);
-            strcpy(msgtype1, "ack");
-            memcpy(buf1, msgtype1, MSGTYPESIZE);
-            sprintf(SN, "%d", CSN);
-            memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
-            n = sendto(sockfd, buf1, strlen(buf1), 0,
-                       (struct sockaddr *) &serveraddr, serverlen);
-            if (n < 0) 
-              error("ERROR in ack sendto");
           } else {
             bzero(buf1, BUFSIZE);
             strcpy(msgtype1, "ack");
             memcpy(buf1, msgtype1, MSGTYPESIZE);
+            sprintf(SN, "%d", CSN);
             memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
             n = sendto(sockfd, buf1, strlen(buf1), 0,
                        (struct sockaddr *) &serveraddr, serverlen);
@@ -213,20 +203,11 @@ int main(int argc, char **argv) {
             fclose(fp);
             comp = 1;
             CSN = -1;
-          } else if (SeqNo > (CSN + 1) % 100000) {
-            bzero(buf1, BUFSIZE);
-            strcpy(msgtype1, "ack");
-            memcpy(buf1, msgtype1, MSGTYPESIZE);
-            sprintf(SN, "%d", CSN);
-            memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
-            n = sendto(sockfd, buf1, strlen(buf1), 0,
-                       (struct sockaddr *) &serveraddr, serverlen);
-            if (n < 0) 
-              error("ERROR in ack sendto");
           } else {
             bzero(buf1, BUFSIZE);
             strcpy(msgtype1, "ack");
             memcpy(buf1, msgtype1, MSGTYPESIZE);
+            sprintf(SN, "%d", CSN);
             memcpy(buf1 + MSGTYPESIZE, SN, SEQNOSIZE);
             n = sendto(sockfd, buf1, strlen(buf1), 0,
                        (struct sockaddr *) &serveraddr, serverlen);
@@ -276,7 +257,7 @@ int main(int argc, char **argv) {
         bzero(SN, SEQNOSIZE + 1);
         memcpy(SN, buf + MSGTYPESIZE, SEQNOSIZE);
         SeqNo = atoi(SN);
-        printf("Client received %d/%d bytes from server with Seqno %d\n", (int) strlen(buf), n, SeqNo);
+        printf("Client received %d/%d bytes from server with %s Seqno %d\n", (int) strlen(buf), n, msgtype, SeqNo);
         if (strcmp(msgtype, "ack") == 0) {
           if (SeqNo == SeqNo1) {
             SeqNo1 = (SeqNo1 + 1) % 100000;
@@ -367,7 +348,7 @@ int main(int argc, char **argv) {
           bzero(SN, SEQNOSIZE + 1);
           memcpy(SN, buf + MSGTYPESIZE, SEQNOSIZE);
           SeqNo = atoi(SN);
-          printf("Client received %d/%d bytes from server with Seqno %d\n", (int) strlen(buf), n, SeqNo);
+          printf("Client received %d/%d bytes from server with %s Seqno %d\n", (int) strlen(buf), n, msgtype, SeqNo);
           if (SeqNo == SeqNo1) {
             SeqNo1 = (SeqNo1 + 1) % 100000;
             comp = 1;

@@ -227,7 +227,7 @@ int main(int argc, char **argv) {
       } else {
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
-        printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
+        printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo1 - 1, msgtype, SeqNo);
         if (n < 0) 
           error("ERROR in sendto"); 
       }
@@ -282,11 +282,12 @@ int main(int argc, char **argv) {
           //testcount++;
         }
       } else if (comp1 == 1) {
-        printf("Server completed get operation after getting %s %d\n", msgtype, SeqNo);    
+        printf("Server completed get operation after getting %s %d\n", msgtype, SeqNo);
+        bzero(msgtype, MSGTYPESIZE + 1);
       } else {
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
-        printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
+        printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo1 - 1, msgtype, SeqNo);
         if (n < 0) 
           error("ERROR in fte sendto");        
       }
@@ -306,7 +307,10 @@ int main(int argc, char **argv) {
     } else if (strcmp(msgtype, "ftr") == 0) {
       // File transfer message. This is part of the file being sent and will be combined with
       // the other parts previously received to form the file.
-      if (retry != 1 && (CSN < 0 || (CSN + 1) % 100000 == SeqNo)) {
+      if (comp == 1) {
+        printf("Server completed put operation after getting %s %d\n", msgtype, SeqNo);
+        bzero(msgtype, MSGTYPESIZE + 1);
+      } else if (retry != 1 && (CSN < 0 || (CSN + 1) % 100000 == SeqNo)) {
         CSN = SeqNo;
         bzero(msg, MSGSIZE + 1);
         memcpy(msg, buf + HEADER, MSGSIZE);
@@ -315,7 +319,10 @@ int main(int argc, char **argv) {
     } else if (strcmp(msgtype, "fte") == 0) {
       // File transfer end message. This is the last part of the file being sent and will be
       // combined with the other parts previously received to form the completed file.
-      if (retry != 1 && (CSN < 0 || (CSN + 1) % 100000 == SeqNo)) {
+      if (comp == 1) {
+        printf("Server completed put operation after getting %s %d\n", msgtype, SeqNo);
+        bzero(msgtype, MSGTYPESIZE + 1);
+      } else if (retry != 1 && (CSN < 0 || (CSN + 1) % 100000 == SeqNo)) {
         CSN = SeqNo;
         bzero(msg, MSGSIZE + 1);
         memcpy(msg, buf + HEADER, MSGSIZE);
