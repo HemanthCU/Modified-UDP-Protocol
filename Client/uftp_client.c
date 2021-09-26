@@ -40,6 +40,7 @@ int main(int argc, char **argv) {
   char buf1[BUFSIZE]; /* message buf1 */
   char msgtype[MSGTYPESIZE + 1];
   char msgtype1[MSGTYPESIZE + 1];
+  char scancommand[10];
   char SN[SEQNOSIZE + 1];
   char SN1[SEQNOSIZE + 1];
   char msg[MSGSIZE + 1];
@@ -92,8 +93,10 @@ int main(int argc, char **argv) {
   /* get a message from the user */
   while (running) {
     bzero(msgtype1, MSGTYPESIZE);
+    bzero(scancommand, 10);
     printf("Please enter the command:\n");
-    scanf("%s", msgtype1);
+    scanf("%s", scancommand);
+    memcpy(msgtype1, scancommand, MSGTYPESIZE);
     if (strcmp(msgtype1, "get") == 0) {
       bzero(filename, 20);
       printf("\nPlease enter the filename:\n");
@@ -315,7 +318,44 @@ int main(int argc, char **argv) {
     } else if (strcmp(msgtype1, "del") == 0) {
 
     } else if (strcmp(msgtype1, "lis") == 0) {
+      bzero(buf1, BUFSIZE);
+      memcpy(buf1, msgtype1, MSGTYPESIZE);
+      sprintf(SN1, "%d", SeqNo1);
+      if (strlen(SN1) < SEQNOSIZE) {
+        len = strlen(SN1);
+        memcpy(SN1 + SEQNOSIZE - len, SN1, len);
+        memset(SN1, '0', SEQNOSIZE - len);
+      }
+      memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
+      serverlen = sizeof(serveraddr);
+      n = sendto(sockfd, buf1, strlen(buf1), 0,
+                 (struct sockaddr *) &serveraddr, serverlen);
+      if (n < 0) 
+        error("ERROR in sendto");
+      comp = 0;
+      while (comp == 0) {
+        bzero(buf, BUFSIZE);
+        retry = 0;
+        n = recvfrom(sockfd, buf, BUFSIZE, 0,
+                     (struct sockaddr *) &serveraddr, &serverlen);
 
+        if (n < 0) {
+          retry = 1;
+        }
+        if (!retry) {
+          bzero(msgtype, MSGTYPESIZE + 1);
+          memcpy(msgtype, buf, MSGTYPESIZE);
+
+          bzero(SN, SEQNOSIZE + 1);
+          memcpy(SN, buf + MSGTYPESIZE, SEQNOSIZE);
+          SeqNo = atoi(SN);
+          printf("Client received %d/%d bytes from server with %s Seqno %d\n", (int) strlen(buf), n, msgtype, SeqNo);
+          if (SeqNo == SeqNo1) {
+            SeqNo1 = (SeqNo1 + 1) % 100000;
+            comp = 1;
+          }
+        }
+      }
     } else if (strcmp(msgtype1, "exi") == 0) {
       bzero(buf1, BUFSIZE);
       memcpy(buf1, msgtype1, MSGTYPESIZE);
