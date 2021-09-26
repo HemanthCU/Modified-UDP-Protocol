@@ -331,7 +331,19 @@ int main(int argc, char **argv) {
       }
     } else if (strcmp(msgtype, "del") == 0) {
       // Initial delete message. Server will delete the requested file and acknowledge.
-
+      if (retry != 1) {
+        bzero(filename, 20);
+        bzero(msg, MSGSIZE + 1);
+        memcpy(filename, buf + HEADER, 20);
+        if (strcmp(filename, ".") == 0 || strcmp(filename, "..") == 0
+            || strcmp(filename, "server") == 0 || strcmp(filename, "uftp_server.c") == 0) {
+          printf("File deletion not allowed\n");
+        } else if (remove(filename) != 0) {
+          printf("File deletion failed\n");
+        } else {
+          printf("File deletion successful\n");
+        }
+      }
     } else if (strcmp(msgtype, "lis") == 0) {
       // Initial list message. Server will respond with the files in the server's system.
       comp1 = 0;
