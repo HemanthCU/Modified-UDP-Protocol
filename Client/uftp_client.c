@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
   }
 
   struct timeval tv;
-  tv.tv_sec = 2;
+  tv.tv_sec = 4;
   tv.tv_usec = 0;
   setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,
              (struct timeval *)&tv,sizeof(struct timeval));

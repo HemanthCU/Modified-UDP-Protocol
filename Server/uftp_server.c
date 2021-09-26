@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
   optval = 1;
   
   struct timeval tv;
-  tv.tv_sec = 1;
+  tv.tv_sec = 3;
   tv.tv_usec = 0;
   
   setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
