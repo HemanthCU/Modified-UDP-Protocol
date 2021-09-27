@@ -1,6 +1,6 @@
 /* 
- * udpserver.c - A simple UDP echo server 
- * usage: udpserver <port>
+ * uftpserver.c - A simple UDP FTP server with reliability
+ * usage: ./server <port>
  */
 
 #include <stdio.h>
@@ -35,32 +35,32 @@ int main(int argc, char **argv) {
   struct sockaddr_in serveraddr; /* server's addr */
   struct sockaddr_in clientaddr; /* client addr */
   struct hostent *hostp; /* client host info */
-  char buf[BUFSIZE]; /* message buf */
-  char buf1[BUFSIZE]; /* message buf1 */
-  char msgtype[MSGTYPESIZE + 1];
-  char msgtype1[MSGTYPESIZE + 1];
-  char SN[SEQNOSIZE + 1];
-  char SN1[SEQNOSIZE + 1];
-  char msg[MSGSIZE + 1];
-  char filename[20];
+  char buf[BUFSIZE]; /* received message buf */
+  char buf1[BUFSIZE]; /* sent message buf1 */
+  char msgtype[MSGTYPESIZE + 1]; /* received message command */
+  char msgtype1[MSGTYPESIZE + 1]; /* sent message command */
+  char SN[SEQNOSIZE + 1]; /* received message Seq No as string */
+  char SN1[SEQNOSIZE + 1]; /* sent message Seq No as string */
+  char msg[MSGSIZE + 1]; /* payload of the packet */
+  char filename[20]; /* filename of the file */
   char *hostaddrp; /* dotted decimal host addr string */
   int optval; /* flag value for setsockopt */
   int n; /* message byte size */
   int SeqNo; /* Sequence number of the received packet */
   int CSN = -1; /* Cumulative sequence number to track which packets arrived */
   int SeqNo1 = 10000; /* Sequence number of the packet */
-  int msgsz;
-  int len;
-  FILE *fp;
-  DIR *d;
-  struct dirent *dir;
-  int comp;
-  int comp1;
-  int retry;
-  int testcount = 1;
-  int badhost = 0;
-  int running = 1;
-  
+  int msgsz; /* file read byte size */
+  int len; /* used for adjusting SeqNo < 10000 into char[5] */
+  int comp; /* completion of current action */
+  int comp1; /* completion of current action */
+  int retry = 0; /* 0 = first attempt/1 = resending attempt */
+  int badhost = 0; /* Bad host address */
+  int running = 1; /* while loop should be running */
+  FILE *fp; /* FILE object to access files */
+  DIR *d; /* DIR object to access directory */
+  struct dirent *dir; /* dirent object to access files in the directory */
+
+  const int DEBUG = 0; /* Enabling log statements */
 
   /* 
    * check command line arguments 
@@ -81,7 +81,8 @@ int main(int argc, char **argv) {
   /* setsockopt: Handy debugging trick that lets 
    * us rerun the server immediately after we kill it; 
    * otherwise we have to wait about 20 secs. 
-   * Eliminates "ERROR on binding: Address already in use" error. 
+   * Eliminates "ERROR on binding: Address already in use" error.
+   * Also used for setting recvfrom timeout.
    */
   optval = 1;
   
@@ -110,7 +111,7 @@ int main(int argc, char **argv) {
     error("ERROR on binding");
 
   /* 
-   * main loop: wait for a datagram, then echo it
+   * main loop: wait for a datagram, then acknowledge it and process accordingly
    */
   clientlen = sizeof(clientaddr);
   while (running) {
@@ -137,7 +138,8 @@ int main(int argc, char **argv) {
     hostaddrp = inet_ntoa(clientaddr.sin_addr);
     if (hostaddrp == NULL)
       badhost = 1;
-    printf("Server received %d/%d bytes from client\n", (int) strlen(buf), n);
+    if (DEBUG)
+      printf("Server received %d/%d bytes from client\n", (int) strlen(buf), n);
     if (retry != 1) {
       bzero(msgtype, MSGTYPESIZE + 1);
       memcpy(msgtype, buf, MSGTYPESIZE);
@@ -152,6 +154,8 @@ int main(int argc, char **argv) {
      */
 
     if (strcmp(msgtype, "ack") != 0 && strcmp(msgtype, "acl") != 0 && strcmp(msgtype, "") != 0 && !badhost) {
+      // All acknowledgements from the server to the client are sent from here
+      // Do not send if no message arrives or messge received is an acknowledgement
       bzero(buf1, BUFSIZE);
       strcpy(msgtype1, "ack");
       memcpy(buf1, msgtype1, MSGTYPESIZE);
@@ -160,10 +164,12 @@ int main(int argc, char **argv) {
         (struct sockaddr *) &clientaddr, clientlen);
       if (n < 0) 
         error("ERROR in ack sendto");
-      if (retry != 1)
-        printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo, msgtype, SeqNo);
-      else
-        printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo, msgtype, SeqNo);
+      if (DEBUG) {
+        if (retry != 1)
+          printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo, msgtype, SeqNo);
+        else
+          printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo, msgtype, SeqNo);
+      }
     }
 
     /*
@@ -183,7 +189,8 @@ int main(int argc, char **argv) {
         fp = fopen(filename, "r");
         fseek(fp, 0, SEEK_SET);
         msgsz = fread(msg, MSGSIZE, 1, fp);
-        if (msgsz == 0) {
+        if (msgsz == 0/* End of file */) {
+          // Send last part of file
           bzero(buf1, BUFSIZE);
           strcpy(msgtype1, "fte");
           memcpy(buf1, msgtype1, MSGTYPESIZE);
@@ -197,13 +204,15 @@ int main(int argc, char **argv) {
           memcpy(buf1 + HEADER, msg, MSGSIZE);
           n = sendto(sockfd, buf1, strlen(buf1), 0, 
             (struct sockaddr *) &clientaddr, clientlen);
-          printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
+          if (DEBUG)
+            printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
           if (n < 0) 
             error("ERROR in fte sendto");
           SeqNo1 = (SeqNo1 + 1) % 100000;
           fclose(fp);
           comp1 = 1;
         } else {
+          // Send part of file
           bzero(buf1, BUFSIZE);
           strcpy(msgtype1, "ftr");
           memcpy(buf1, msgtype1, MSGTYPESIZE);
@@ -217,15 +226,18 @@ int main(int argc, char **argv) {
           memcpy(buf1 + HEADER, msg, MSGSIZE);
           n = sendto(sockfd, buf1, strlen(buf1), 0, 
             (struct sockaddr *) &clientaddr, clientlen);
-          printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
+          if (DEBUG)
+            printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
           if (n < 0) 
             error("ERROR in ftr sendto");
           SeqNo1 = (SeqNo1 + 1) % 100000;
         }
       } else {
+        // Resend message
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
-        printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo1 - 1, msgtype, SeqNo);
+        if (DEBUG)
+          printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo1 - 1, msgtype, SeqNo);
         if (n < 0) 
           error("ERROR in sendto"); 
       }
@@ -236,6 +248,7 @@ int main(int argc, char **argv) {
         msgsz = (int) fread(msg, MSGSIZE, 1, fp);
 
         if (msgsz == 0/* End of file */) {
+          // Send last part of file
           bzero(buf1, BUFSIZE);
           strcpy(msgtype1, "fte");
           memcpy(buf1, msgtype1, MSGTYPESIZE);
@@ -249,13 +262,15 @@ int main(int argc, char **argv) {
           memcpy(buf1 + HEADER, msg, MSGSIZE);
           n = sendto(sockfd, buf1, strlen(buf1), 0, 
             (struct sockaddr *) &clientaddr, clientlen);
-          printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
+          if (DEBUG)
+            printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
           if (n < 0) 
             error("ERROR in fte sendto");
           SeqNo1 = (SeqNo1 + 1) % 100000;
           fclose(fp);
           comp1 = 1;
         } else {
+          // Send part of file
           bzero(buf1, BUFSIZE);
           strcpy(msgtype1, "ftr");
           memcpy(buf1, msgtype1, MSGTYPESIZE);
@@ -267,38 +282,36 @@ int main(int argc, char **argv) {
           }
           memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
           memcpy(buf1 + HEADER, msg, MSGSIZE);
-          if (0 && testcount % 10000 == 2) {
-            // Nothing
-          } else {
-            n = sendto(sockfd, buf1, strlen(buf1), 0, 
-              (struct sockaddr *) &clientaddr, clientlen);
-          }
-          printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
+          n = sendto(sockfd, buf1, strlen(buf1), 0, 
+            (struct sockaddr *) &clientaddr, clientlen);
+          if (DEBUG)
+            printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
           if (n < 0) 
             error("ERROR in ftr sendto");
           SeqNo1 = (SeqNo1 + 1) % 100000;
-          //testcount++;
         }
       } else if (comp1 == 1) {
-        printf("Server completed get operation after getting %s %d\n", msgtype, SeqNo);
+        // End of get operation
+        printf("Server completed get operation\n");
         bzero(msgtype, MSGTYPESIZE + 1);
       } else {
+        // Resend message
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
-        printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo1 - 1, msgtype, SeqNo);
+        if (DEBUG)
+          printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo1 - 1, msgtype, SeqNo);
         if (n < 0) 
           error("ERROR in fte sendto");        
       }
 
     } else if (strcmp(msgtype, "put") == 0) {
-      // Initial put message. Server will send acknowledgement, create file with the filename
-      // in the file system and expect ftr messages from the client.
+      // Initial put message. Server will send acknowledgement above, create file with the filename
+      // in the current directory and expect ftr messages from the client.
       if (retry != 1 && (CSN < 0 || (CSN + 1) % 100000 == SeqNo)) {
         comp = 0;
         CSN = SeqNo;
         bzero(filename, 20);
         memcpy(filename, buf + HEADER, 20);
-        printf("new file = %s", filename);
         fp = fopen(filename, "w+");
         fseek(fp, 0, SEEK_SET);
       }
@@ -306,7 +319,7 @@ int main(int argc, char **argv) {
       // File transfer message. This is part of the file being sent and will be combined with
       // the other parts previously received to form the file.
       if (comp == 1) {
-        printf("Server completed put operation after getting %s %d\n", msgtype, SeqNo);
+        printf("Server completed put operation\n");
         bzero(msgtype, MSGTYPESIZE + 1);
       } else if (retry != 1 && (CSN < 0 || (CSN + 1) % 100000 == SeqNo)) {
         CSN = SeqNo;
@@ -318,7 +331,7 @@ int main(int argc, char **argv) {
       // File transfer end message. This is the last part of the file being sent and will be
       // combined with the other parts previously received to form the completed file.
       if (comp == 1) {
-        printf("Server completed put operation after getting %s %d\n", msgtype, SeqNo);
+        printf("Server completed put operation\n");
         bzero(msgtype, MSGTYPESIZE + 1);
       } else if (retry != 1 && (CSN < 0 || (CSN + 1) % 100000 == SeqNo)) {
         CSN = SeqNo;
@@ -354,6 +367,7 @@ int main(int argc, char **argv) {
         d = opendir(".");
         dir = readdir(d);
         if (dir == NULL) {
+          // Send end of file list
           bzero(buf1, BUFSIZE);
           strcpy(msgtype1, "lie");
           memcpy(buf1, msgtype1, MSGTYPESIZE);
@@ -366,12 +380,15 @@ int main(int argc, char **argv) {
           memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
           n = sendto(sockfd, buf1, strlen(buf1), 0, 
             (struct sockaddr *) &clientaddr, clientlen);
-          printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
+          if (DEBUG)
+            printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
           if (n < 0) 
             error("ERROR in fte sendto");
           SeqNo1 = (SeqNo1 + 1) % 100000;
           comp1 = 1;
+          printf("Server completed list operation\n");
         } else {
+          // Send next file of file list
           bzero(msg, MSGSIZE + 1);
           strcpy(msg, dir->d_name);
           bzero(buf1, BUFSIZE);
@@ -387,24 +404,28 @@ int main(int argc, char **argv) {
           memcpy(buf1 + HEADER, msg, MSGSIZE);
           n = sendto(sockfd, buf1, strlen(buf1), 0, 
             (struct sockaddr *) &clientaddr, clientlen);
-          printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
+          if (DEBUG)
+            printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
           if (n < 0) 
             error("ERROR in ftr sendto");
           SeqNo1 = (SeqNo1 + 1) % 100000;
         }
       } else {
+        // Resend message
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
-        printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo1 - 1, msgtype, SeqNo);
+        if (DEBUG)
+          printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo1 - 1, msgtype, SeqNo);
         if (n < 0) 
           error("ERROR in sendto"); 
       }
     } else if (strcmp(msgtype, "acl") == 0) {
-      // Acknowledgement message from client when receiving file after get command.
+      // Acknowledgement message from client when receiving filename after list command.
       if ((SeqNo + 1) % 100000 == SeqNo1 && comp1 == 0) {
         dir = readdir(d);
 
         if (dir == NULL) {
+          // Send end of file list
           bzero(buf1, BUFSIZE);
           strcpy(msgtype1, "lie");
           memcpy(buf1, msgtype1, MSGTYPESIZE);
@@ -417,12 +438,14 @@ int main(int argc, char **argv) {
           memcpy(buf1 + MSGTYPESIZE, SN1, SEQNOSIZE);
           n = sendto(sockfd, buf1, strlen(buf1), 0, 
             (struct sockaddr *) &clientaddr, clientlen);
-          printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
+          if (DEBUG)
+            printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
           if (n < 0) 
             error("ERROR in fte sendto");
           SeqNo1 = (SeqNo1 + 1) % 100000;
           comp1 = 1;
         } else {
+          // Send next file of file list
           bzero(msg, MSGSIZE + 1);
           strcpy(msg, dir->d_name);
           bzero(buf1, BUFSIZE);
@@ -438,18 +461,22 @@ int main(int argc, char **argv) {
           memcpy(buf1 + HEADER, msg, MSGSIZE);
           n = sendto(sockfd, buf1, strlen(buf1), 0, 
             (struct sockaddr *) &clientaddr, clientlen);
-          printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
+          if (DEBUG)
+            printf("Server sent %s %d to client after getting %s %d\n", msgtype1, SeqNo1, msgtype, SeqNo);
           if (n < 0) 
             error("ERROR in ftr sendto");
           SeqNo1 = (SeqNo1 + 1) % 100000;
         }
       } else if (comp1 == 1) {
-        printf("Server completed get operation after getting %s %d\n", msgtype, SeqNo);
+        // End of list operation
+        printf("Server completed list operation\n");
         bzero(msgtype, MSGTYPESIZE + 1);
       } else {
+        // Resend message
         n = sendto(sockfd, buf1, strlen(buf1), 0, 
           (struct sockaddr *) &clientaddr, clientlen);
-        printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo1 - 1, msgtype, SeqNo);
+        if (DEBUG)
+          printf("Server resent %s %d to client as it didn't receive anything after %s %d\n", msgtype1, SeqNo1 - 1, msgtype, SeqNo);
         if (n < 0) 
           error("ERROR in fte sendto");        
       }
@@ -458,7 +485,6 @@ int main(int argc, char **argv) {
       running = 0;
     } else {
       printf("Retry Recv\n");
-      //error("ERROR message sent");
     }
   }
   printf("The Server program will terminate now\n");
