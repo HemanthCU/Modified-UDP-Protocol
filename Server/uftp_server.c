@@ -211,6 +211,7 @@ int main(int argc, char **argv) {
           SeqNo1 = (SeqNo1 + 1) % 100000;
           fclose(fp);
           comp1 = 1;
+          printf("Server completed get operation\n");
         } else {
           // Send part of file
           bzero(buf1, BUFSIZE);
@@ -269,6 +270,7 @@ int main(int argc, char **argv) {
           SeqNo1 = (SeqNo1 + 1) % 100000;
           fclose(fp);
           comp1 = 1;
+          printf("Server completed get operation\n");
         } else {
           // Send part of file
           bzero(buf1, BUFSIZE);
@@ -292,7 +294,6 @@ int main(int argc, char **argv) {
         }
       } else if (comp1 == 1) {
         // End of get operation
-        printf("Server completed get operation\n");
         bzero(msgtype, MSGTYPESIZE + 1);
       } else {
         // Resend message
@@ -319,7 +320,6 @@ int main(int argc, char **argv) {
       // File transfer message. This is part of the file being sent and will be combined with
       // the other parts previously received to form the file.
       if (comp == 1) {
-        printf("Server completed put operation\n");
         bzero(msgtype, MSGTYPESIZE + 1);
       } else if (retry != 1 && (CSN < 0 || (CSN + 1) % 100000 == SeqNo)) {
         CSN = SeqNo;
@@ -331,7 +331,6 @@ int main(int argc, char **argv) {
       // File transfer end message. This is the last part of the file being sent and will be
       // combined with the other parts previously received to form the completed file.
       if (comp == 1) {
-        printf("Server completed put operation\n");
         bzero(msgtype, MSGTYPESIZE + 1);
       } else if (retry != 1 && (CSN < 0 || (CSN + 1) % 100000 == SeqNo)) {
         CSN = SeqNo;
@@ -341,6 +340,7 @@ int main(int argc, char **argv) {
         fclose(fp);
         comp = 1;
         CSN = -1;
+        printf("Server completed put operation\n");
       }
     } else if (strcmp(msgtype, "del") == 0) {
       // Initial delete message. Server will delete the requested file and acknowledge.
@@ -444,6 +444,7 @@ int main(int argc, char **argv) {
             error("ERROR in fte sendto");
           SeqNo1 = (SeqNo1 + 1) % 100000;
           comp1 = 1;
+          printf("Server completed list operation\n");
         } else {
           // Send next file of file list
           bzero(msg, MSGSIZE + 1);
@@ -469,7 +470,6 @@ int main(int argc, char **argv) {
         }
       } else if (comp1 == 1) {
         // End of list operation
-        printf("Server completed list operation\n");
         bzero(msgtype, MSGTYPESIZE + 1);
       } else {
         // Resend message
