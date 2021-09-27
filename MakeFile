@@ -1,2 +1,0 @@
-gcc Server/uftp_server.c -o Server/server
-gcc Client/uftp_client.c -o Client/client
