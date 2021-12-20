@@ -1,5 +1,4 @@
-# NetSys_PA1
-Network Systems Programming Assignment 1
+# Modified UDP Protocol
 
 This program reliably performs the following 5 actions between a server and a client even on an unstable link.
 
@@ -14,7 +13,10 @@ The program uses Stop-and-wait protocol to reliably send messages, maintaining s
 The makefile compiles both the files using the make command and can compile either the Server or Client code by using make server or make client respectively.
 
 Once compiled, the client code can be run with the following command:
+```
 ./client hostname portno
-
+```
 And the server code can be run with the following command:
+```
 ./server portno
+```
